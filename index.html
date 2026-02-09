@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tesla Supercharger Network Optimizer — India</title>
+  <meta name="description" content="Interactive MILP-based facility location optimizer for Tesla's Supercharger network rollout across India. Built with operations research." />
+  <meta property="og:title" content="Tesla Supercharger Network Optimizer — India" />
+  <meta property="og:description" content="Interactive dashboard solving the facility location problem for Tesla's India Supercharger network using Mixed-Integer Linear Programming." />
+  <meta property="og:type" content="website" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: #000; }
+    input[type="range"] { -webkit-appearance: none; appearance: none; height: 6px; background: #374151; border-radius: 8px; outline: none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #e74c3c; cursor: pointer; border: 2px solid #fff; }
+    input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #e74c3c; cursor: pointer; border: 2px solid #fff; }
+    .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+    @keyframes pulse-slow { 0%,100% { r: 5; } 50% { r: 7; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+    const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } = Recharts;
+
+    // ─── DATA ────────────────────────────────────────────────────────────────────
+    const CITIES = [
+      { id: 0, name: "Delhi", lat: 28.61, lng: 77.21, state: "Delhi", type: "metro", pop: 32.9, grid: 800, cost: 95, demand: 480, tier: 1 },
+      { id: 1, name: "Mumbai", lat: 19.08, lng: 72.88, state: "Maharashtra", type: "metro", pop: 21.0, grid: 900, cost: 110, demand: 520, tier: 1 },
+      { id: 2, name: "Bangalore", lat: 12.97, lng: 77.59, state: "Karnataka", type: "metro", pop: 13.2, grid: 750, cost: 85, demand: 450, tier: 1 },
+      { id: 3, name: "Chennai", lat: 13.08, lng: 80.27, state: "Tamil Nadu", type: "metro", pop: 11.5, grid: 700, cost: 80, demand: 380, tier: 1 },
+      { id: 4, name: "Hyderabad", lat: 17.39, lng: 78.49, state: "Telangana", type: "metro", pop: 10.5, grid: 650, cost: 78, demand: 400, tier: 1 },
+      { id: 5, name: "Kolkata", lat: 22.57, lng: 88.36, state: "West Bengal", type: "metro", pop: 15.1, grid: 600, cost: 72, demand: 320, tier: 1 },
+      { id: 6, name: "Pune", lat: 18.52, lng: 73.86, state: "Maharashtra", type: "city", pop: 7.4, grid: 550, cost: 70, demand: 350, tier: 1 },
+      { id: 7, name: "Ahmedabad", lat: 23.02, lng: 72.57, state: "Gujarat", type: "city", pop: 8.4, grid: 600, cost: 68, demand: 310, tier: 1 },
+      { id: 8, name: "Jaipur", lat: 26.91, lng: 75.79, state: "Rajasthan", type: "city", pop: 4.1, grid: 450, cost: 58, demand: 220, tier: 2 },
+      { id: 9, name: "Lucknow", lat: 26.85, lng: 80.95, state: "Uttar Pradesh", type: "city", pop: 3.7, grid: 400, cost: 55, demand: 200, tier: 2 },
+      { id: 10, name: "Chandigarh", lat: 30.73, lng: 76.78, state: "Chandigarh", type: "city", pop: 1.2, grid: 500, cost: 60, demand: 180, tier: 2 },
+      { id: 11, name: "Kochi", lat: 9.93, lng: 76.27, state: "Kerala", type: "city", pop: 2.1, grid: 500, cost: 62, demand: 250, tier: 2 },
+      { id: 12, name: "Nagpur", lat: 21.15, lng: 79.09, state: "Maharashtra", type: "highway", pop: 2.9, grid: 400, cost: 52, demand: 170, tier: 2 },
+      { id: 13, name: "Indore", lat: 22.72, lng: 75.86, state: "Madhya Pradesh", type: "city", pop: 2.2, grid: 380, cost: 50, demand: 160, tier: 2 },
+      { id: 14, name: "Surat", lat: 21.17, lng: 72.83, state: "Gujarat", type: "city", pop: 7.8, grid: 550, cost: 65, demand: 280, tier: 2 },
+      { id: 15, name: "Vadodara", lat: 22.31, lng: 73.19, state: "Gujarat", type: "highway", pop: 2.1, grid: 450, cost: 48, demand: 150, tier: 2 },
+      { id: 16, name: "Coimbatore", lat: 11.02, lng: 76.96, state: "Tamil Nadu", type: "city", pop: 1.7, grid: 420, cost: 52, demand: 190, tier: 2 },
+      { id: 17, name: "Vizag", lat: 17.69, lng: 83.22, state: "Andhra Pradesh", type: "city", pop: 2.0, grid: 380, cost: 50, demand: 150, tier: 2 },
+      { id: 18, name: "Goa", lat: 15.30, lng: 74.0, state: "Goa", type: "tourism", pop: 1.5, grid: 350, cost: 58, demand: 200, tier: 2 },
+      { id: 19, name: "Bhopal", lat: 23.26, lng: 77.41, state: "Madhya Pradesh", type: "city", pop: 2.0, grid: 380, cost: 48, demand: 140, tier: 3 },
+      { id: 20, name: "Udaipur", lat: 24.59, lng: 73.71, state: "Rajasthan", type: "tourism", pop: 0.6, grid: 300, cost: 55, demand: 130, tier: 3 },
+      { id: 21, name: "Mysore", lat: 12.30, lng: 76.66, state: "Karnataka", type: "tourism", pop: 1.0, grid: 380, cost: 48, demand: 140, tier: 3 },
+      { id: 22, name: "Amritsar", lat: 31.63, lng: 74.87, state: "Punjab", type: "tourism", pop: 1.2, grid: 400, cost: 52, demand: 130, tier: 3 },
+      { id: 23, name: "Varanasi", lat: 25.32, lng: 83.01, state: "Uttar Pradesh", type: "tourism", pop: 1.4, grid: 350, cost: 48, demand: 120, tier: 3 },
+      { id: 24, name: "Agra", lat: 27.18, lng: 78.02, state: "Uttar Pradesh", type: "tourism", pop: 1.8, grid: 400, cost: 50, demand: 160, tier: 2 },
+      { id: 25, name: "Dehradun", lat: 30.32, lng: 78.03, state: "Uttarakhand", type: "city", pop: 0.7, grid: 350, cost: 55, demand: 110, tier: 3 },
+      { id: 26, name: "Patna", lat: 25.61, lng: 85.14, state: "Bihar", type: "city", pop: 2.5, grid: 300, cost: 45, demand: 130, tier: 3 },
+      { id: 27, name: "Ranchi", lat: 23.36, lng: 85.33, state: "Jharkhand", type: "city", pop: 1.1, grid: 280, cost: 42, demand: 90, tier: 3 },
+      { id: 28, name: "Bhubaneswar", lat: 20.30, lng: 85.82, state: "Odisha", type: "city", pop: 1.0, grid: 350, cost: 48, demand: 120, tier: 3 },
+      { id: 29, name: "Thiruvananthapuram", lat: 8.52, lng: 76.94, state: "Kerala", type: "city", pop: 1.0, grid: 420, cost: 55, demand: 160, tier: 2 },
+      { id: 30, name: "Guwahati", lat: 26.14, lng: 91.74, state: "Assam", type: "city", pop: 1.1, grid: 250, cost: 50, demand: 80, tier: 3 },
+      { id: 31, name: "Raipur", lat: 21.25, lng: 81.63, state: "Chhattisgarh", type: "city", pop: 1.1, grid: 320, cost: 44, demand: 100, tier: 3 },
+      { id: 32, name: "Mangalore", lat: 12.87, lng: 74.84, state: "Karnataka", type: "city", pop: 0.7, grid: 380, cost: 50, demand: 120, tier: 3 },
+      { id: 33, name: "Nashik", lat: 19.99, lng: 73.79, state: "Maharashtra", type: "highway", pop: 1.6, grid: 400, cost: 48, demand: 140, tier: 3 },
+      { id: 34, name: "Kanpur", lat: 26.45, lng: 80.35, state: "Uttar Pradesh", type: "city", pop: 3.0, grid: 380, cost: 48, demand: 150, tier: 3 },
+    ];
+
+    const HIGHWAYS = [
+      { name: "NH-44 (Delhi→Mumbai)", cities: [0, 8, 24, 9, 34, 13, 15, 7, 14, 1], color: "#e74c3c" },
+      { name: "NH-48 (Delhi→Mumbai)", cities: [0, 8, 20, 7, 15, 14, 1], color: "#3498db" },
+      { name: "NH-44 South (Delhi→Chennai)", cities: [0, 24, 8, 13, 4, 2, 3], color: "#e67e22" },
+      { name: "NH-16 (Chennai→Kolkata)", cities: [3, 17, 28, 5], color: "#2ecc71" },
+      { name: "NH-6 (Kolkata→Mumbai)", cities: [5, 27, 12, 1], color: "#f39c12" },
+      { name: "NH-44 North (Delhi→Amritsar)", cities: [0, 10, 22], color: "#9b59b6" },
+      { name: "NH-66 (Mumbai→Kochi)", cities: [1, 18, 32, 11, 29], color: "#1abc9c" },
+    ];
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────────
+    function haversine(c1, c2) {
+      const R = 6371;
+      const dLat = ((c2.lat - c1.lat) * Math.PI) / 180;
+      const dLon = ((c2.lng - c1.lng) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos((c1.lat * Math.PI) / 180) * Math.cos((c2.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function project(lat, lng, width, height) {
+      const minLat = 6.5, maxLat = 35.5, minLng = 68, maxLng = 97.5;
+      const x = ((lng - minLng) / (maxLng - minLng)) * width;
+      const y = height - ((lat - minLat) / (maxLat - minLat)) * height;
+      return [x, y];
+    }
+
+    const INDIA_PATH = "M 140,20 L 155,15 170,18 178,30 185,28 200,35 215,32 230,38 248,35 260,42 265,55 275,50 290,58 300,52 315,60 330,55 345,65 355,58 368,68 375,62 385,72 390,80 395,95 385,105 378,120 370,130 365,145 358,160 362,175 355,190 360,205 352,220 345,235 348,250 340,265 335,278 325,288 315,298 305,310 290,325 278,340 265,350 250,360 238,368 225,375 215,382 205,378 195,385 185,375 178,365 170,350 160,338 152,325 148,310 145,295 150,280 155,265 148,250 140,235 135,220 125,210 118,200 122,185 128,170 120,155 115,140 118,125 125,110 130,95 128,80 132,65 135,50 138,35 140,20 Z";
+
+    // ─── Solver ──────────────────────────────────────────────────────────────────
+    function solveNetwork(params) {
+      const { budget, range, minStations, demandMultiplier, phase, prioritizeHighways, solarBonus } = params;
+      const cities = CITIES.map(c => ({ ...c, demand: Math.round(c.demand * demandMultiplier) }));
+
+      let candidates = cities;
+      if (phase === 1) candidates = cities.filter(c => c.tier <= 1);
+      else if (phase === 2) candidates = cities.filter(c => c.tier <= 2);
+      else if (phase === 3) candidates = cities.filter(c => c.tier === 3);
+
+      const scored = candidates.map(c => {
+        let score = c.demand * 2;
+        score += c.grid * 0.3;
+        score -= c.cost * 0.5;
+        if (c.type === "metro") score += 200;
+        if (c.type === "highway" && prioritizeHighways) score += 150;
+        if (c.type === "tourism") score += 80;
+        const onHighway = HIGHWAYS.some(h => h.cities.includes(c.id));
+        if (onHighway && prioritizeHighways) score += 180;
+        if (solarBonus && c.lat < 25) score += 100;
+        if (solarBonus && c.state === "Rajasthan") score += 120;
+        return { ...c, score };
+      }).sort((a, b) => b.score - a.score);
+
+      const selected = [];
+      let spent = 0;
+      const coveredCityIds = new Set();
+      const totalDemand = cities.reduce((s, c) => s + c.demand, 0);
+
+      for (const city of scored) {
+        if (spent + city.cost > budget && selected.length >= minStations) break;
+        if (spent + city.cost > budget) continue;
+        const alreadyCovered = selected.some(s => haversine(s, city) < range * 0.5);
+        if (alreadyCovered && selected.length >= minStations) continue;
+        const chargersNeeded = Math.max(4, Math.ceil(city.demand / 40));
+        const chargerCost = chargersNeeded * 0.15;
+        if (spent + city.cost + chargerCost > budget && selected.length >= minStations) break;
+        selected.push({ ...city, chargers: chargersNeeded, totalCost: city.cost + chargerCost });
+        spent += city.cost + chargerCost;
+        cities.forEach(dc => {
+          if (!coveredCityIds.has(dc.id) && haversine(city, dc) <= range) coveredCityIds.add(dc.id);
+        });
+      }
+
+      const totalDemandCovered = cities.filter(c => coveredCityIds.has(c.id)).reduce((sum, c) => sum + c.demand, 0);
+      const coverageMap = cities.map(c => {
+        const nearestStation = selected.reduce((min, s) => { const d = haversine(c, s); return d < min ? d : min; }, Infinity);
+        return { ...c, covered: nearestStation <= range, nearestDist: nearestStation };
+      });
+      const coveragePercent = Math.min(100, Math.round((coverageMap.filter(c => c.covered).length / cities.length) * 100));
+      const highwayCoverage = HIGHWAYS.map(h => {
+        const totalSegments = h.cities.length - 1;
+        let coveredSegments = 0;
+        for (let i = 0; i < h.cities.length - 1; i++) {
+          const c1 = cities[h.cities[i]], c2 = cities[h.cities[i + 1]];
+          const mid = { lat: (c1.lat + c2.lat) / 2, lng: (c1.lng + c2.lng) / 2 };
+          if (selected.some(s => haversine(s, mid) <= range)) coveredSegments++;
+        }
+        return { ...h, coverage: Math.round((coveredSegments / totalSegments) * 100) };
+      });
+
+      return {
+        selected, totalCost: Math.round(spent),
+        totalChargers: selected.reduce((s, c) => s + c.chargers, 0),
+        coveragePercent, coverageMap, highwayCoverage,
+        demandServed: Math.min(100, Math.round((totalDemandCovered / totalDemand) * 100)),
+      };
+    }
+
+    // ─── Components ──────────────────────────────────────────────────────────────
+    function IndiaMap({ result, hoveredCity, setHoveredCity, range }) {
+      const W = 500, H = 460;
+      const { selected, coverageMap } = result;
+      const selectedIds = new Set(selected.map(c => c.id));
+      return (
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" style={{ background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%)" }}>
+          <defs>
+            <radialGradient id="stationGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#e74c3c" stopOpacity="0.6" /><stop offset="100%" stopColor="#e74c3c" stopOpacity="0" /></radialGradient>
+            <radialGradient id="coverGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#3498db" stopOpacity="0.15" /><stop offset="100%" stopColor="#3498db" stopOpacity="0" /></radialGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+            <filter id="softGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          </defs>
+          <path d={INDIA_PATH} fill="#1a2744" stroke="#2d4a7a" strokeWidth="1.5" opacity="0.9" />
+          {[10, 15, 20, 25, 30].map(lat => { const [, y] = project(lat, 70, W, H); return <line key={`lat${lat}`} x1="0" y1={y} x2={W} y2={y} stroke="#1e2d50" strokeWidth="0.3" strokeDasharray="4,4" />; })}
+          {HIGHWAYS.map((hw, hi) => { const points = hw.cities.map(ci => project(CITIES[ci].lat, CITIES[ci].lng, W, H)); const p = points.map((pt, i) => `${i === 0 ? "M" : "L"} ${pt[0]},${pt[1]}`).join(" "); return <g key={hi}><path d={p} fill="none" stroke={hw.color} strokeWidth="1.5" opacity="0.25" strokeDasharray="6,4" /></g>; })}
+          {selected.map(city => { const [cx, cy] = project(city.lat, city.lng, W, H); const mapSpanKm = (35.5 - 6.5) * 111; const radiusPx = (range / mapSpanKm) * H; return <circle key={`cov-${city.id}`} cx={cx} cy={cy} r={radiusPx} fill="url(#coverGlow)" stroke="#3498db" strokeWidth="0.5" strokeDasharray="3,3" opacity="0.4" />; })}
+          {coverageMap.map(city => {
+            const [cx, cy] = project(city.lat, city.lng, W, H);
+            const isSelected = selectedIds.has(city.id);
+            const isHovered = hoveredCity === city.id;
+            if (isSelected) return (
+              <g key={city.id} onMouseEnter={() => setHoveredCity(city.id)} onMouseLeave={() => setHoveredCity(null)} style={{ cursor: "pointer" }}>
+                <circle cx={cx} cy={cy} r="16" fill="url(#stationGlow)" />
+                <circle cx={cx} cy={cy} r="6" fill="#e74c3c" stroke="#fff" strokeWidth="1.5" filter="url(#glow)" className="animate-pulse-slow" />
+                <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="6" fontWeight="bold">⚡</text>
+                {isHovered && <g><rect x={cx - 55} y={cy - 52} width="110" height="40" rx="6" fill="#1a1f3a" stroke="#e74c3c" strokeWidth="1" opacity="0.95" /><text x={cx} y={cy - 38} textAnchor="middle" fill="#fff" fontSize="9" fontWeight="bold">{city.name}</text><text x={cx} y={cy - 26} textAnchor="middle" fill="#aaa" fontSize="7">{city.chargers} chargers · ₹{city.totalCost}Cr</text><text x={cx} y={cy - 16} textAnchor="middle" fill="#3498db" fontSize="7">Demand: {city.demand}/day</text></g>}
+              </g>
+            );
+            return (
+              <g key={city.id} onMouseEnter={() => setHoveredCity(city.id)} onMouseLeave={() => setHoveredCity(null)} style={{ cursor: "pointer" }}>
+                <circle cx={cx} cy={cy} r="3" fill={city.covered ? "#2ecc71" : "#555"} opacity={city.covered ? 0.7 : 0.4} stroke={city.covered ? "#2ecc71" : "#444"} strokeWidth="0.5" />
+                {isHovered && <g><rect x={cx - 45} y={cy - 35} width="90" height="26" rx="5" fill="#1a1f3a" stroke="#555" strokeWidth="0.8" opacity="0.95" /><text x={cx} y={cy - 22} textAnchor="middle" fill="#ccc" fontSize="8" fontWeight="bold">{city.name}</text><text x={cx} y={cy - 12} textAnchor="middle" fill={city.covered ? "#2ecc71" : "#e74c3c"} fontSize="7">{city.covered ? `✓ Covered (${Math.round(city.nearestDist)}km)` : `✗ ${Math.round(city.nearestDist)}km away`}</text></g>}
+              </g>
+            );
+          })}
+          {selected.map(city => { const [cx, cy] = project(city.lat, city.lng, W, H); return <text key={`lbl-${city.id}`} x={cx} y={cy + 14} textAnchor="middle" fill="#e0e0e0" fontSize="7" fontWeight="500" filter="url(#softGlow)">{city.name}</text>; })}
+          <g transform="translate(10, 390)"><rect x="0" y="0" width="180" height="60" rx="6" fill="#0d1225" opacity="0.9" stroke="#2d4a7a" strokeWidth="0.5" /><circle cx="14" cy="14" r="5" fill="#e74c3c" stroke="#fff" strokeWidth="1" /><text x="26" y="17" fill="#ccc" fontSize="8">Supercharger Station</text><circle cx="14" cy="30" r="3" fill="#2ecc71" /><text x="26" y="33" fill="#ccc" fontSize="8">Covered City</text><circle cx="14" cy="46" r="3" fill="#555" /><text x="26" y="49" fill="#ccc" fontSize="8">Uncovered City</text><line x1="100" y1="11" x2="120" y2="11" stroke="#e74c3c" strokeWidth="1.5" strokeDasharray="4,3" /><text x="126" y="14" fill="#ccc" fontSize="8">Highway</text></g>
+        </svg>
+      );
+    }
+
+    function MetricCard({ label, value, unit, icon, color, subtext, tooltip }) {
+      const [showTip, setShowTip] = useState(false);
+      return (
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-gray-600 transition-all relative" onMouseEnter={() => setShowTip(true)} onMouseLeave={() => setShowTip(false)}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">{icon}</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wider">{label}</span>
+            {tooltip && <span className="text-xs text-gray-600 cursor-help">(?)</span>}
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold" style={{ color }}>{value}</span>
+            <span className="text-xs text-gray-500">{unit}</span>
+          </div>
+          {subtext && <span className="text-xs text-gray-600 mt-1 block">{subtext}</span>}
+          {tooltip && showTip && <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg p-2.5 shadow-xl"><p className="text-xs text-gray-300 leading-relaxed">{tooltip}</p></div>}
+        </div>
+      );
+    }
+
+    function ParamSlider({ label, value, min, max, step, onChange, unit, icon, description }) {
+      return (
+        <div className="mb-5">
+          <div className="flex justify-between items-center mb-0.5">
+            <span className="text-xs text-gray-400 flex items-center gap-1.5"><span>{icon}</span> {label}</span>
+            <span className="text-sm font-mono font-bold text-white">{value}{unit}</span>
+          </div>
+          {description && <p className="text-xs text-gray-600 mb-1.5 leading-relaxed">{description}</p>}
+          <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} className="w-full" />
+          <div className="flex justify-between text-xs text-gray-600 mt-0.5"><span>{min}{unit}</span><span>{max}{unit}</span></div>
+        </div>
+      );
+    }
+
+    function HowItWorksGuide() {
+      const [open, setOpen] = useState(false);
+      return (
+        <div className="mb-4">
+          <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 hover:bg-gray-800 transition-colors text-left">
+            <div className="flex items-center gap-2"><span className="text-sm">💡</span><span className="text-sm font-semibold text-gray-200">How This Tool Works</span><span className="text-xs text-gray-500">— click to {open ? "collapse" : "expand"}</span></div>
+            <span className="text-gray-500">{open ? "−" : "+"}</span>
+          </button>
+          {open && (
+            <div className="bg-gray-900 border border-t-0 border-gray-800 rounded-b-xl px-4 pb-4 pt-2 space-y-4 text-xs text-gray-400 leading-relaxed">
+              <div><h4 className="text-sm font-semibold text-white mb-1">What is this?</h4><p>An interactive optimizer for placing Tesla Supercharger stations across India. It uses a <strong className="text-gray-200">greedy heuristic</strong> (approximating the MILP facility-location model described in the Math tab) to decide which of 35 candidate cities should get a station, how many charger stalls each needs, and whether the resulting network meets coverage and demand targets — all within your budget.</p></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><h4 className="text-sm font-semibold text-red-400 mb-1">Top KPI Cards (hover for details)</h4><p><strong className="text-gray-300">Stations:</strong> How many physical sites the solver chose to build out of 35 candidates.</p><p className="mt-1"><strong className="text-gray-300">Chargers:</strong> Total V3 stalls (250 kW each). 1 stall per ~40 daily charges, minimum 4.</p><p className="mt-1"><strong className="text-gray-300">Coverage:</strong> % of the 35 cities within range of at least one station.</p><p className="mt-1"><strong className="text-gray-300">Investment:</strong> Total ₹ spent = fixed site costs + per-charger variable costs.</p><p className="mt-1"><strong className="text-gray-300">Demand Met:</strong> % of total projected daily charging demand the network can serve.</p></div>
+                <div><h4 className="text-sm font-semibold text-blue-400 mb-1">Parameter Sliders</h4><p><strong className="text-gray-300">Budget (₹ Cr):</strong> The hard spending cap — maps to the budget constraint Σcᵢxᵢ ≤ B.</p><p className="mt-1"><strong className="text-gray-300">Coverage Range (km):</strong> How far a station's service area extends. 250 km ≈ Tesla's typical full-charge range.</p><p className="mt-1"><strong className="text-gray-300">Min Stations:</strong> Minimum sites the solver must build regardless of budget pressure.</p><p className="mt-1"><strong className="text-gray-300">Demand Growth (x):</strong> Multiplier on base demand. Increase to model faster EV adoption.</p></div>
+              </div>
+              <div><h4 className="text-sm font-semibold text-green-400 mb-1">Strategy Controls</h4><p><strong className="text-gray-300">Rollout Phase:</strong> Ph.1 = Tier 1 metros only. Ph.2 = adds Tier 2 cities. Ph.3 = Tier 3 only. "All" = entire pool.</p><p className="mt-1"><strong className="text-gray-300">Prioritize Highways:</strong> Boosts score of cities on major corridors (Golden Quadrilateral, NH-44, NH-66, etc.).</p><p className="mt-1"><strong className="text-gray-300">Solar Bonus:</strong> Favors southern/western cities where solar power can offset grid dependency.</p></div>
+              <div><h4 className="text-sm font-semibold text-yellow-400 mb-1">Tabs</h4><p><strong className="text-gray-300">Network Map:</strong> SVG map showing stations (red), covered cities (green), uncovered (gray), highway corridors.</p><p className="mt-1"><strong className="text-gray-300">Analysis:</strong> Investment by state, station types, and 6-dimension radar chart.</p><p className="mt-1"><strong className="text-gray-300">Corridors:</strong> Per-highway coverage % for long-distance travel readiness.</p><p className="mt-1"><strong className="text-gray-300">Projection:</strong> 5-year growth simulation with increasing demand and budget.</p><p className="mt-1"><strong className="text-gray-300">MILP Model:</strong> Formal mathematical formulation and working PuLP (Python) code.</p></div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function FormulationPanel() {
+      const [expanded, setExpanded] = useState(null);
+      const sections = [
+        { title: "Objective Function", subtitle: "Minimize total deployment cost", content: "min Σᵢ cᵢxᵢ + Σᵢ Σₖ vᵢₖyᵢₖ\n\nWhere cᵢ = fixed cost at location i, vᵢₖ = variable cost per charger type k, xᵢ ∈ {0,1} = build decision, yᵢₖ = number of chargers" },
+        { title: "Coverage Constraint", subtitle: "Every demand point within range", content: "Σᵢ:dᵢⱼ≤r zᵢⱼ ≥ 1   ∀j ∈ J\nzᵢⱼ ≤ xᵢ   ∀i,j\n\nEach demand point j must be served by at least one station i within range r." },
+        { title: "Capacity Constraint", subtitle: "Stations meet assigned demand", content: "Σⱼ demⱼ·zᵢⱼ ≤ Σₖ capₖ·yᵢₖ   ∀i ∈ I\nΣₖ powerₖ·yᵢₖ ≤ pᵢ·xᵢ   ∀i ∈ I\n\nDemand assigned to station i cannot exceed charger capacity or power grid limit." },
+        { title: "Budget Constraint", subtitle: "Total spend within budget", content: "Σᵢ cᵢxᵢ + Σᵢ Σₖ vᵢₖyᵢₖ ≤ B\n\nTotal fixed + variable costs bounded by budget B (in ₹ Crore)." },
+      ];
+      return (
+        <div className="space-y-2">
+          {sections.map((s, i) => (
+            <div key={i} className="border border-gray-800 rounded-lg overflow-hidden">
+              <button onClick={() => setExpanded(expanded === i ? null : i)} className="w-full flex items-center justify-between p-3 bg-gray-900 hover:bg-gray-800 transition-colors text-left">
+                <div><div className="text-sm font-semibold text-white">{s.title}</div><div className="text-xs text-gray-500">{s.subtitle}</div></div>
+                <span className="text-gray-500 text-lg">{expanded === i ? "−" : "+"}</span>
+              </button>
+              {expanded === i && <div className="p-3 bg-gray-950 border-t border-gray-800"><pre className="text-xs text-green-400 font-mono whitespace-pre-wrap leading-relaxed">{s.content}</pre></div>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ─── Main App ────────────────────────────────────────────────────────────────
+    function App() {
+      const [budget, setBudget] = useState(1500);
+      const [range, setRange] = useState(250);
+      const [minStations, setMinStations] = useState(10);
+      const [demandMultiplier, setDemandMultiplier] = useState(1.0);
+      const [phase, setPhase] = useState(0);
+      const [prioritizeHighways, setPrioritizeHighways] = useState(true);
+      const [solarBonus, setSolarBonus] = useState(false);
+      const [activeTab, setActiveTab] = useState("map");
+      const [hoveredCity, setHoveredCity] = useState(null);
+
+      const params = useMemo(() => ({ budget, range, minStations, demandMultiplier, phase, prioritizeHighways, solarBonus }), [budget, range, minStations, demandMultiplier, phase, prioritizeHighways, solarBonus]);
+      const result = useMemo(() => solveNetwork(params), [params]);
+
+      const costByState = useMemo(() => { const map = {}; result.selected.forEach(c => { map[c.state] = (map[c.state] || 0) + c.totalCost; }); return Object.entries(map).map(([state, cost]) => ({ state: state.slice(0, 10), cost: Math.round(cost) })).sort((a, b) => b.cost - a.cost); }, [result]);
+      const typeBreakdown = useMemo(() => { const map = { metro: 0, city: 0, highway: 0, tourism: 0 }; result.selected.forEach(c => { map[c.type] = (map[c.type] || 0) + 1; }); return Object.entries(map).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value })); }, [result]);
+      const COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"];
+      const phaseProjection = useMemo(() => [1, 2, 3, 4, 5].map(year => { const r = solveNetwork({ ...params, demandMultiplier: demandMultiplier * (1 + year * 0.3), budget: budget * (1 + year * 0.25) }); return { year: `Year ${year}`, stations: r.selected.length, chargers: r.totalChargers, coverage: r.coveragePercent, cost: r.totalCost }; }), [params, budget, demandMultiplier]);
+      const radarData = useMemo(() => [{ metric: "Coverage", value: result.coveragePercent }, { metric: "Demand", value: result.demandServed }, { metric: "Efficiency", value: Math.min(100, Math.round((result.coveragePercent / (result.totalCost / 100)) * 10)) }, { metric: "Highway", value: Math.round(result.highwayCoverage.reduce((s, h) => s + h.coverage, 0) / result.highwayCoverage.length) }, { metric: "Scale", value: Math.min(100, Math.round((result.selected.length / 35) * 100)) }, { metric: "Budget Used", value: Math.round((result.totalCost / budget) * 100) }], [result, budget]);
+      const tabs = [{ id: "map", label: "Network Map", icon: "🗺" }, { id: "analysis", label: "Analysis", icon: "📊" }, { id: "highways", label: "Corridors", icon: "🛣" }, { id: "projection", label: "Projection", icon: "📈" }, { id: "math", label: "MILP Model", icon: "∑" }];
+
+      return (
+        <div className="min-h-screen bg-black text-white">
+          <div className="border-b border-gray-800 bg-gradient-to-r from-gray-950 via-black to-gray-950">
+            <div className="max-w-7xl mx-auto px-4 py-5">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center text-sm font-bold">T</div>
+                <h1 className="text-xl font-bold tracking-tight">Tesla Supercharger Network Optimizer</h1>
+                <span className="text-xs bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full border border-red-600/30">India</span>
+              </div>
+              <p className="text-xs text-gray-500 ml-11">Mixed-Integer Linear Programming (MILP) Facility Location Solver · {CITIES.length} candidate sites · {HIGHWAYS.length} highway corridors</p>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <HowItWorksGuide />
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+              <MetricCard label="Stations" value={result.selected.length} unit="sites" icon="⚡" color="#e74c3c" subtext={`of ${CITIES.length} candidates`} tooltip="Number of supercharger stations the solver chose to build from 35 candidate sites across India to minimize cost while maximizing coverage." />
+              <MetricCard label="Chargers" value={result.totalChargers} unit="units" icon="🔌" color="#3498db" subtext="V3 Superchargers" tooltip="Total V3 Supercharger stalls (250 kW each). Per station: 1 stall per ~40 daily charges, minimum 4." />
+              <MetricCard label="Coverage" value={result.coveragePercent} unit="%" icon="📡" color="#2ecc71" subtext={`${range}km radius`} tooltip="Percentage of 35 candidate cities within the coverage range of at least one station. A city is 'covered' if nearest supercharger is within the set range." />
+              <MetricCard label="Investment" value={`₹${result.totalCost}`} unit="Cr" icon="💰" color="#f39c12" subtext={`of ₹${budget}Cr budget`} tooltip="Total capital expenditure (₹ Crore). Fixed costs (land, grid, construction) + variable costs (₹0.15 Cr per V3 charger unit)." />
+              <MetricCard label="Demand Met" value={result.demandServed} unit="%" icon="🎯" color="#9b59b6" subtext={`${demandMultiplier}x multiplier`} tooltip="% of total projected daily EV charging demand the network can serve. Demand of covered cities ÷ total demand, scaled by growth multiplier." />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <div className="lg:col-span-1 space-y-4">
+                <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                  <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>Optimization Parameters</h3>
+                  <ParamSlider label="Budget" value={budget} min={500} max={5000} step={100} onChange={setBudget} unit=" Cr" icon="₹" description="Total capital for construction + chargers (₹ Crore). The B constraint in the MILP." />
+                  <ParamSlider label="Coverage Range" value={range} min={100} max={500} step={25} onChange={setRange} unit=" km" icon="📡" description="Max distance a city can be from the nearest station to count as covered. ~250 km = Tesla battery range." />
+                  <ParamSlider label="Min Stations" value={minStations} min={5} max={30} step={1} onChange={setMinStations} unit="" icon="📍" description="Minimum stations the solver must build. Maps to the Σxᵢ ≥ M constraint." />
+                  <ParamSlider label="Demand Growth" value={demandMultiplier} min={0.5} max={3.0} step={0.1} onChange={setDemandMultiplier} unit="x" icon="📈" description="Scales daily demand at every city. 1.0x = baseline. Increase to simulate faster EV adoption." />
+                </div>
+                <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>Strategy</h3>
+                  <div className="space-y-3">
+                    <div><label className="text-xs text-gray-400 mb-1.5 block">Rollout Phase</label><div className="grid grid-cols-4 gap-1">{[{ v: 0, l: "All" }, { v: 1, l: "Ph.1" }, { v: 2, l: "Ph.2" }, { v: 3, l: "Ph.3" }].map(p => <button key={p.v} onClick={() => setPhase(p.v)} className={`text-xs py-1.5 rounded-lg transition-all font-medium ${phase === p.v ? "bg-red-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>{p.l}</button>)}</div></div>
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={prioritizeHighways} onChange={e => setPrioritizeHighways(e.target.checked)} className="accent-red-500" /><span className="text-xs text-gray-300">Prioritize Highway Corridors</span></label>
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={solarBonus} onChange={e => setSolarBonus(e.target.checked)} className="accent-yellow-500" /><span className="text-xs text-gray-300">Solar Integration Bonus</span></label>
+                  </div>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 max-h-64 overflow-y-auto">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>Selected Stations ({result.selected.length})</h3>
+                  <div className="space-y-1">
+                    {result.selected.map((c, i) => (
+                      <div key={c.id} onMouseEnter={() => setHoveredCity(c.id)} onMouseLeave={() => setHoveredCity(null)} className={`flex items-center justify-between text-xs py-1.5 px-2 rounded-lg transition-all cursor-pointer ${hoveredCity === c.id ? "bg-gray-800" : "hover:bg-gray-800"}`}>
+                        <div className="flex items-center gap-2"><span className="text-gray-600 font-mono w-4">{i + 1}</span><span className="text-gray-200">{c.name}</span><span className={`px-1.5 py-0.5 rounded text-xs ${c.type === "metro" ? "bg-red-900/50 text-red-300" : c.type === "highway" ? "bg-blue-900/50 text-blue-300" : c.type === "tourism" ? "bg-purple-900/50 text-purple-300" : "bg-gray-800 text-gray-400"}`}>{c.type}</span></div>
+                        <span className="text-gray-500">{c.chargers}ch · ₹{Math.round(c.totalCost)}Cr</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-3">
+                <div className="flex gap-1 mb-3 bg-gray-900 rounded-xl p-1 border border-gray-800">
+                  {tabs.map(t => <button key={t.id} onClick={() => setActiveTab(t.id)} className={`flex-1 text-xs py-2 rounded-lg transition-all font-medium flex items-center justify-center gap-1.5 ${activeTab === t.id ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300"}`}><span>{t.icon}</span> {t.label}</button>)}
+                </div>
+
+                {activeTab === "map" && <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><IndiaMap result={result} hoveredCity={hoveredCity} setHoveredCity={setHoveredCity} range={range} /></div>}
+
+                {activeTab === "analysis" && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-3 text-gray-300">Investment by State (₹ Crore)</h3><ResponsiveContainer width="100%" height={220}><BarChart data={costByState} layout="vertical" margin={{ left: 10 }}><XAxis type="number" tick={{ fill: "#666", fontSize: 10 }} /><YAxis dataKey="state" type="category" tick={{ fill: "#999", fontSize: 10 }} width={80} /><Tooltip contentStyle={{ background: "#1a1f3a", border: "1px solid #333", borderRadius: 8, fontSize: 12 }} /><Bar dataKey="cost" fill="#e74c3c" radius={[0, 4, 4, 0]} /></BarChart></ResponsiveContainer></div>
+                      <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-3 text-gray-300">Station Type Distribution</h3><ResponsiveContainer width="100%" height={220}><PieChart><Pie data={typeBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={40} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`}>{typeBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip contentStyle={{ background: "#1a1f3a", border: "1px solid #333", borderRadius: 8, fontSize: 12 }} /></PieChart></ResponsiveContainer></div>
+                    </div>
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-3 text-gray-300">Network Performance Radar</h3><ResponsiveContainer width="100%" height={280}><RadarChart data={radarData}><PolarGrid stroke="#333" /><PolarAngleAxis dataKey="metric" tick={{ fill: "#999", fontSize: 11 }} /><PolarRadiusAxis domain={[0, 100]} tick={{ fill: "#555", fontSize: 9 }} /><Radar dataKey="value" stroke="#e74c3c" fill="#e74c3c" fillOpacity={0.2} strokeWidth={2} /></RadarChart></ResponsiveContainer></div>
+                  </div>
+                )}
+
+                {activeTab === "highways" && (
+                  <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                    <h3 className="text-sm font-semibold mb-4 text-gray-300">Highway Corridor Coverage</h3>
+                    <div className="space-y-3">
+                      {result.highwayCoverage.map((hw, i) => (
+                        <div key={i} className="bg-gray-950 rounded-lg p-3 border border-gray-800">
+                          <div className="flex justify-between items-center mb-2"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: hw.color }}></div><span className="text-sm font-medium text-gray-200">{hw.name}</span></div><span className={`text-sm font-bold ${hw.coverage >= 80 ? "text-green-400" : hw.coverage >= 50 ? "text-yellow-400" : "text-red-400"}`}>{hw.coverage}%</span></div>
+                          <div className="w-full bg-gray-800 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-500" style={{ width: `${hw.coverage}%`, backgroundColor: hw.color, opacity: 0.8 }}></div></div>
+                          <div className="mt-2 flex gap-1 flex-wrap">{hw.cities.map(ci => { const city = CITIES[ci]; const isSelected = result.selected.some(s => s.id === ci); return <span key={ci} className={`text-xs px-2 py-0.5 rounded-full ${isSelected ? "bg-red-900/60 text-red-300 border border-red-700/50" : "bg-gray-800 text-gray-500"}`}>{city.name} {isSelected && "⚡"}</span>; })}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 p-3 bg-gray-950 rounded-lg border border-gray-800"><div className="text-xs text-gray-500 mb-1">Average Highway Coverage</div><div className="text-2xl font-bold text-white">{Math.round(result.highwayCoverage.reduce((s, h) => s + h.coverage, 0) / result.highwayCoverage.length)}%</div></div>
+                  </div>
+                )}
+
+                {activeTab === "projection" && (
+                  <div className="space-y-4">
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-3 text-gray-300">5-Year Growth Projection</h3><ResponsiveContainer width="100%" height={280}><LineChart data={phaseProjection}><CartesianGrid strokeDasharray="3 3" stroke="#222" /><XAxis dataKey="year" tick={{ fill: "#999", fontSize: 11 }} /><YAxis yAxisId="left" tick={{ fill: "#999", fontSize: 10 }} /><YAxis yAxisId="right" orientation="right" tick={{ fill: "#999", fontSize: 10 }} /><Tooltip contentStyle={{ background: "#1a1f3a", border: "1px solid #333", borderRadius: 8, fontSize: 12 }} /><Legend wrapperStyle={{ fontSize: 11 }} /><Line yAxisId="left" type="monotone" dataKey="stations" stroke="#e74c3c" strokeWidth={2} name="Stations" dot={{ fill: "#e74c3c" }} /><Line yAxisId="left" type="monotone" dataKey="chargers" stroke="#3498db" strokeWidth={2} name="Chargers" dot={{ fill: "#3498db" }} /><Line yAxisId="right" type="monotone" dataKey="coverage" stroke="#2ecc71" strokeWidth={2} name="Coverage %" dot={{ fill: "#2ecc71" }} /></LineChart></ResponsiveContainer></div>
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-3 text-gray-300">Cumulative Investment Trajectory (₹ Crore)</h3><ResponsiveContainer width="100%" height={200}><BarChart data={phaseProjection}><CartesianGrid strokeDasharray="3 3" stroke="#222" /><XAxis dataKey="year" tick={{ fill: "#999", fontSize: 11 }} /><YAxis tick={{ fill: "#999", fontSize: 10 }} /><Tooltip contentStyle={{ background: "#1a1f3a", border: "1px solid #333", borderRadius: 8, fontSize: 12 }} /><Bar dataKey="cost" fill="#f39c12" radius={[4, 4, 0, 0]} name="Investment ₹Cr" /></BarChart></ResponsiveContainer></div>
+                  </div>
+                )}
+
+                {activeTab === "math" && (
+                  <div className="space-y-4">
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-1 text-gray-300">MILP Formulation</h3><p className="text-xs text-gray-500 mb-4">Mixed-Integer Linear Programming model for the facility location problem</p><FormulationPanel /></div>
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                      <h3 className="text-sm font-semibold mb-3 text-gray-300">Model Statistics</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-gray-950 rounded-lg p-3 text-center"><div className="text-lg font-bold text-red-400">{CITIES.length}</div><div className="text-xs text-gray-500">Binary Variables (xᵢ)</div></div>
+                        <div className="bg-gray-950 rounded-lg p-3 text-center"><div className="text-lg font-bold text-blue-400">{CITIES.length * CITIES.length}</div><div className="text-xs text-gray-500">Assignment Vars (zᵢⱼ)</div></div>
+                        <div className="bg-gray-950 rounded-lg p-3 text-center"><div className="text-lg font-bold text-green-400">{CITIES.length + CITIES.length * 2 + 2}</div><div className="text-xs text-gray-500">Constraints</div></div>
+                        <div className="bg-gray-950 rounded-lg p-3 text-center"><div className="text-lg font-bold text-yellow-400">NP-hard</div><div className="text-xs text-gray-500">Complexity Class</div></div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                      <h3 className="text-sm font-semibold mb-3 text-gray-300">PuLP Implementation (Python)</h3>
+                      <pre className="text-xs text-green-300 font-mono bg-gray-950 p-4 rounded-lg overflow-x-auto leading-relaxed">{`from pulp import *
+from math import radians, sin, cos, sqrt, atan2
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371
+    dlat, dlon = radians(lat2-lat1), radians(lon2-lon1)
+    a = sin(dlat/2)**2 + cos(radians(lat1))*cos(radians(lat2))*sin(dlon/2)**2
+    return R * 2 * atan2(sqrt(a), sqrt(1-a))
+
+I = range(${CITIES.length})   # Candidate locations
+J = range(${CITIES.length})   # Demand points
+c = [95, 110, 85, 80, 78, ...]  # Fixed costs (₹Cr)
+coords = [(28.61,77.21), (19.08,72.88), ...]
+d = [[haversine(*coords[i], *coords[j]) for j in J] for i in I]
+r = ${range}   # Coverage range (km)
+B = ${budget}  # Budget (₹Cr)
+
+model = LpProblem("Tesla_Supercharger_India", LpMinimize)
+x = LpVariable.dicts("build", I, cat='Binary')
+z = LpVariable.dicts("assign", [(i,j) for i in I for j in J], cat='Binary')
+
+model += lpSum(c[i] * x[i] for i in I)
+
+for j in J:
+    model += lpSum(z[(i,j)] for i in I if d[i][j] <= r) >= 1
+for i in I:
+    for j in J:
+        model += z[(i,j)] <= x[i]
+model += lpSum(c[i] * x[i] for i in I) <= B
+
+model.solve(PULP_CBC_CMD(msg=0))
+print(f"Stations: {int(sum(value(x[i]) for i in I))}")
+print(f"Cost: ₹{value(model.objective):.0f} Cr")`}</pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-gray-800 pt-4 pb-6">
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-600">Tesla Supercharger Network Optimizer · MILP Facility Location Problem · {CITIES.length} candidate sites across India</div>
+                <div className="text-xs text-gray-600">Built for operations research analysis</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
