@@ -1,7 +1,7 @@
-# tesla-supercharger-optimizer
-Tesla Supercharger - linear programming - clause assisted - interactive dashboard
+
 
 # Tesla Supercharger Network Optimizer — India
+#Tesla Supercharger - linear programming - clause assisted - interactive dashboard
 
 An interactive dashboard solving the facility location problem for Tesla's 
 India Supercharger network using Mixed-Integer Linear Programming (MILP).
