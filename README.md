@@ -1,32 +1,61 @@
-
-
 # Tesla Supercharger Network Optimizer — India
-#Tesla Supercharger - linear programming - clause assisted - interactive dashboard
 
-An interactive dashboard solving the facility location problem for Tesla's 
-India Supercharger network using Mixed-Integer Linear Programming (MILP).
+Interactive dashboard for the **facility location problem** applied to Tesla's Supercharger network rollout across India.
 
-## Live Dashboard
-**[Launch the Dashboard →](https://ronakvijayvergia.github.io/tesla-supercharger-optimizer/)**
+The live dashboard runs a **greedy heuristic** for real-time interactivity. A formal **MILP (Mixed-Integer Linear Programming)** formulation with PuLP (Python) code is included as a reference for offline exact solving with production-grade solvers.
 
-## What It Does
-- Optimizes placement of 35 candidate Supercharger stations across India
-- Uses a greedy heuristic approximating MILP facility location optimization
-- Covers 7 major highway corridors including the Golden Quadrilateral
-- Interactive parameters: budget, coverage range, demand growth, rollout phase
+**[Live Demo →](https://ronakvijayvergia.github.io/tesla-supercharger-optimizer/)**
 
-## Built With
-React · D3.js · Recharts · Tailwind CSS · PuLP (Python) formulation
+> *This project was built with the assistance of Claude (Anthropic). The concept, problem framing, and direction are mine; the code and content were AI-generated. I do not claim intellectual ownership over the AI-generated portions.*
 
-#Potential Limitations
-While this tool provides a robust framework for optimizing supercharger placements in India, I'm fully aware of its constraints based on my development choices. Here's a breakdown of key areas where it could be enhanced:Scope and Scale: Currently, it evaluates only 35 candidate sites, focusing on major metros, highways, and tourism spots. Given India's expansive geography—including underserved regions like the Northeast or rural interiors—a full-scale deployment might require expanding to 100+ sites for comprehensive national coverage. This was a deliberate simplification for the demo to keep computation manageable.
-Assumptions in Data: The demand projections (e.g., based on multipliers for EV growth) and cost estimates (e.g., per-station and per-charger figures) are derived from baseline industry reports and approximations. In practice, these could vary with real-time data from sources like SIAM or actual Tesla rollout plans, so I've noted that users should validate inputs for accuracy.
-Implementation Details: As a web-based demo built with Python solvers (like PuLP or Gurobi) and interactive JS elements, it's optimized for quick prototyping rather than enterprise-level operations. For Tesla's production use, it would benefit from integrations like live APIs for traffic/grid data or handling larger datasets without performance hits.
-Real-World Applicability: The model excels as an initial planning aid, especially aligned with Tesla's 2026 India entry (e.g., factory sites in Gujarat/Maharashtra). However, it may not fully account for on-ground challenges like traffic congestion overestimating effective coverage or seasonal factors (e.g., monsoons impacting solar options). Future iterations could incorporate stochastic modeling for uncertainties like variable EV adoption rates.
+## Features
 
+- **Accurate India map** with district-level boundaries using D3-geo + GeoJSON (759 districts, 36 states/UTs)
+- **Real-time greedy solver** — scores and ranks 35 candidate cities by demand, grid capacity, highway connectivity, and more
+- **Parameter controls**: budget, coverage range, minimum stations, demand growth
+- **Strategy toggles**: rollout phases, highway prioritization, solar integration
+- **5-tab dashboard**: Network Map, Analysis, Corridors, Projection, MILP Model
+- **Hover tooltips** explaining every KPI and parameter
+- **MILP reference formulation** — formal mathematical model with PuLP (Python) code you can copy and run offline
 
+## How It Works
 
+### Live Dashboard (Greedy Heuristic)
+The browser-based solver uses a **greedy scoring algorithm** for instant interactivity:
+- Cities are scored by demand, grid capacity, type (metro/highway/tourism), and highway corridor proximity
+- The solver selects the highest-scoring cities within the budget constraint
+- Coverage, demand satisfaction, and highway connectivity are computed in real time
 
-## Disclaimer
-This project was built with the assistance of Claude (Anthropic). 
-It is an educational/portfolio project and is not affiliated with Tesla, Inc.
+### MILP Reference (Exact Solver)
+The **MILP Model tab** provides the formal optimization formulation:
+- **Objective**: Minimize total cost (fixed site costs + variable charger costs)
+- **Constraints**: Budget cap, coverage range, minimum station count, capacity limits
+- **Implementation**: PuLP (Python) code ready to run with CBC, Gurobi, or CPLEX for provably optimal solutions
+- The heuristic approximates this model; the MILP finds the exact optimum
+
+## Tech Stack
+
+Single self-contained HTML file — zero build step:
+
+- React 18 (CDN)
+- D3.js (CDN) — geographic projection + GeoJSON rendering
+- Recharts (CDN) — data visualizations
+- Tailwind CSS (CDN)
+- Babel standalone (CDN)
+
+## Deploy
+
+1. Fork this repo
+2. Go to **Settings → Pages → Source → main**
+3. Your dashboard is live at `https://your-username.github.io/tesla-supercharger-optimizer/`
+
+## Limitations
+
+- **Scope**: Limited to 35 candidate cities — India's vast size may need 100+ for full coverage
+- **Data**: Demand estimates and costs are baseline approximations, not sourced from real market data
+- **Solver**: The live dashboard uses a heuristic, not an exact MILP solver — results are good approximations but not provably optimal
+- **Dynamic factors**: Doesn't model grid reliability, monsoon impact on solar, or multi-period year-over-year expansion
+
+## License
+
+MIT
