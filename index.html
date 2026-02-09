@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tesla Supercharger Network Optimizer — India</title>
-  <meta name="description" content="Interactive MILP-based facility location optimizer for Tesla's Supercharger network rollout across India. Built with operations research." />
+  <meta name="description" content="Interactive facility-location optimizer for Tesla's Supercharger network across India. Greedy heuristic with MILP reference formulation. Built with operations research." />
   <meta property="og:title" content="Tesla Supercharger Network Optimizer — India" />
-  <meta property="og:description" content="Interactive dashboard solving the facility location problem for Tesla's India Supercharger network using Mixed-Integer Linear Programming." />
+  <meta property="og:description" content="Interactive dashboard solving the facility location problem for Tesla's India Supercharger network. Real-time greedy heuristic with formal MILP reference formulation." />
   <meta property="og:type" content="website" />
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -324,13 +324,13 @@
           </button>
           {open && (
             <div className="bg-gray-900 border border-t-0 border-gray-800 rounded-b-xl px-4 pb-4 pt-2 space-y-4 text-xs text-gray-400 leading-relaxed">
-              <div><h4 className="text-sm font-semibold text-white mb-1">What is this?</h4><p>An interactive optimizer for placing Tesla Supercharger stations across India. It uses a <strong className="text-gray-200">greedy heuristic</strong> (approximating the MILP facility-location model described in the Math tab) to decide which of 35 candidate cities should get a station, how many charger stalls each needs, and whether the resulting network meets coverage and demand targets — all within your budget.</p></div>
+              <div><h4 className="text-sm font-semibold text-white mb-1">What is this?</h4><p>An interactive optimizer for placing Tesla Supercharger stations across India. The live dashboard runs a <strong className="text-gray-200">greedy heuristic</strong> — a fast scoring-and-ranking algorithm — in your browser for instant interactivity. It decides which of 35 candidate cities should get a station, how many charger stalls each needs, and whether the resulting network meets coverage and demand targets — all within your budget.</p><p className="mt-2">The <strong className="text-gray-200">MILP Model tab</strong> provides the formal Mixed-Integer Linear Programming formulation and a ready-to-run PuLP (Python) implementation. This is the exact mathematical model you would use with production-grade solvers (Gurobi, CPLEX, CBC) to find the provably optimal solution offline. The heuristic approximates this model for real-time exploration.</p></div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><h4 className="text-sm font-semibold text-red-400 mb-1">Top KPI Cards (hover for details)</h4><p><strong className="text-gray-300">Stations:</strong> How many physical sites the solver chose to build out of 35 candidates.</p><p className="mt-1"><strong className="text-gray-300">Chargers:</strong> Total V3 stalls (250 kW each). 1 stall per ~40 daily charges, minimum 4.</p><p className="mt-1"><strong className="text-gray-300">Coverage:</strong> % of the 35 cities within range of at least one station.</p><p className="mt-1"><strong className="text-gray-300">Investment:</strong> Total ₹ spent = fixed site costs + per-charger variable costs.</p><p className="mt-1"><strong className="text-gray-300">Demand Met:</strong> % of total projected daily charging demand the network can serve.</p></div>
                 <div><h4 className="text-sm font-semibold text-blue-400 mb-1">Parameter Sliders</h4><p><strong className="text-gray-300">Budget (₹ Cr):</strong> The hard spending cap — maps to the budget constraint Σcᵢxᵢ ≤ B.</p><p className="mt-1"><strong className="text-gray-300">Coverage Range (km):</strong> How far a station's service area extends. 250 km ≈ Tesla's typical full-charge range.</p><p className="mt-1"><strong className="text-gray-300">Min Stations:</strong> Minimum sites the solver must build regardless of budget pressure.</p><p className="mt-1"><strong className="text-gray-300">Demand Growth (x):</strong> Multiplier on base demand. Increase to model faster EV adoption.</p></div>
               </div>
               <div><h4 className="text-sm font-semibold text-green-400 mb-1">Strategy Controls</h4><p><strong className="text-gray-300">Rollout Phase:</strong> Ph.1 = Tier 1 metros only. Ph.2 = adds Tier 2 cities. Ph.3 = Tier 3 only. "All" = entire pool.</p><p className="mt-1"><strong className="text-gray-300">Prioritize Highways:</strong> Boosts score of cities on major corridors (Golden Quadrilateral, NH-44, NH-66, etc.).</p><p className="mt-1"><strong className="text-gray-300">Solar Bonus:</strong> Favors southern/western cities where solar power can offset grid dependency.</p></div>
-              <div><h4 className="text-sm font-semibold text-yellow-400 mb-1">Tabs</h4><p><strong className="text-gray-300">Network Map:</strong> SVG map showing stations (red), covered cities (green), uncovered (gray), highway corridors.</p><p className="mt-1"><strong className="text-gray-300">Analysis:</strong> Investment by state, station types, and 6-dimension radar chart.</p><p className="mt-1"><strong className="text-gray-300">Corridors:</strong> Per-highway coverage % for long-distance travel readiness.</p><p className="mt-1"><strong className="text-gray-300">Projection:</strong> 5-year growth simulation with increasing demand and budget.</p><p className="mt-1"><strong className="text-gray-300">MILP Model:</strong> Formal mathematical formulation and working PuLP (Python) code.</p></div>
+              <div><h4 className="text-sm font-semibold text-yellow-400 mb-1">Tabs</h4><p><strong className="text-gray-300">Network Map:</strong> SVG map showing stations (red), covered cities (green), uncovered (gray), highway corridors.</p><p className="mt-1"><strong className="text-gray-300">Analysis:</strong> Investment by state, station types, and 6-dimension radar chart.</p><p className="mt-1"><strong className="text-gray-300">Corridors:</strong> Per-highway coverage % for long-distance travel readiness.</p><p className="mt-1"><strong className="text-gray-300">Projection:</strong> 5-year growth simulation with increasing demand and budget.</p><p className="mt-1"><strong className="text-gray-300">MILP Model:</strong> Reference mathematical formulation and PuLP (Python) code for offline exact solving.</p></div>
             </div>
           )}
         </div>
@@ -391,7 +391,7 @@
                 <h1 className="text-xl font-bold tracking-tight">Tesla Supercharger Network Optimizer</h1>
                 <span className="text-xs bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full border border-red-600/30">India</span>
               </div>
-              <p className="text-xs text-gray-500 ml-11">Mixed-Integer Linear Programming (MILP) Facility Location Solver · {CITIES.length} candidate sites · {HIGHWAYS.length} highway corridors</p>
+              <p className="text-xs text-gray-500 ml-11">Facility Location Optimizer · Greedy heuristic with MILP reference formulation · {CITIES.length} candidate sites · {HIGHWAYS.length} highway corridors</p>
             </div>
           </div>
 
@@ -410,7 +410,7 @@
               <div className="lg:col-span-1 space-y-4">
                 <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
                   <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>Optimization Parameters</h3>
-                  <ParamSlider label="Budget" value={budget} min={500} max={5000} step={100} onChange={setBudget} unit=" Cr" icon="₹" description="Total capital for construction + chargers (₹ Crore). The B constraint in the MILP." />
+                  <ParamSlider label="Budget" value={budget} min={500} max={5000} step={100} onChange={setBudget} unit=" Cr" icon="₹" description="Total capital for construction + chargers (₹ Crore). Maps to the budget constraint Σcᵢxᵢ ≤ B in the MILP formulation." />
                   <ParamSlider label="Coverage Range" value={range} min={100} max={500} step={25} onChange={setRange} unit=" km" icon="📡" description="Max distance a city can be from the nearest station to count as covered. ~250 km = Tesla battery range." />
                   <ParamSlider label="Min Stations" value={minStations} min={5} max={30} step={1} onChange={setMinStations} unit="" icon="📍" description="Minimum stations the solver must build. Maps to the Σxᵢ ≥ M constraint." />
                   <ParamSlider label="Demand Growth" value={demandMultiplier} min={0.5} max={3.0} step={0.1} onChange={setDemandMultiplier} unit="x" icon="📈" description="Scales daily demand at every city. 1.0x = baseline. Increase to simulate faster EV adoption." />
@@ -478,7 +478,7 @@
 
                 {activeTab === "math" && (
                   <div className="space-y-4">
-                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-1 text-gray-300">MILP Formulation</h3><p className="text-xs text-gray-500 mb-4">Mixed-Integer Linear Programming model for the facility location problem</p><FormulationPanel /></div>
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800"><h3 className="text-sm font-semibold mb-1 text-gray-300">MILP Formulation (Reference)</h3><p className="text-xs text-gray-500 mb-4">Formal Mixed-Integer Linear Programming model for the facility location problem. This is the exact formulation you would pass to a production solver (Gurobi, CPLEX, CBC) for provably optimal results. The live dashboard uses a greedy heuristic to approximate this model in real time.</p><FormulationPanel /></div>
                     <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
                       <h3 className="text-sm font-semibold mb-3 text-gray-300">Model Statistics</h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -489,7 +489,8 @@
                       </div>
                     </div>
                     <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-                      <h3 className="text-sm font-semibold mb-3 text-gray-300">PuLP Implementation (Python)</h3>
+                      <h3 className="text-sm font-semibold mb-1 text-gray-300">PuLP Implementation (Python) — Reference Code</h3>
+                      <p className="text-xs text-gray-500 mb-3">Copy and run this offline with <code className="text-green-400">pip install pulp</code> to solve the exact MILP. Not executed in the browser — the dashboard uses a JS-based greedy heuristic for interactivity.</p>
                       <pre className="text-xs text-green-300 font-mono bg-gray-950 p-4 rounded-lg overflow-x-auto leading-relaxed">{`from pulp import *
 from math import radians, sin, cos, sqrt, atan2
 
@@ -531,7 +532,7 @@ print(f"Cost: ₹{value(model.objective):.0f} Cr")`}</pre>
 
             <div className="mt-6 border-t border-gray-800 pt-4 pb-6">
               <div className="flex items-center justify-between">
-                <div className="text-xs text-gray-600">Tesla Supercharger Network Optimizer · MILP Facility Location Problem · {CITIES.length} candidate sites across India</div>
+                <div className="text-xs text-gray-600">Tesla Supercharger Network Optimizer · Facility Location Problem · Greedy heuristic + MILP reference · {CITIES.length} candidate sites across India</div>
                 <div className="text-xs text-gray-600">Built for operations research analysis</div>
               </div>
             </div>
