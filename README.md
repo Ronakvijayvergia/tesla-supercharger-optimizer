@@ -2,48 +2,82 @@
 
 Interactive dashboard for the **facility location problem** applied to Tesla's Supercharger network rollout across India.
 
-The live dashboard runs a **greedy heuristic** for real-time interactivity. A formal **MILP (Mixed-Integer Linear Programming)** formulation with PuLP (Python) code is included as a reference for offline exact solving with production-grade solvers.
+**Two components, clearly separated:**
+- **`index.html`** — Browser-based dashboard with a **greedy heuristic** for real-time interactivity
+- **`solver/tesla_supercharger_milp.py`** — Exact **MILP solver** using PuLP + CBC that finds provably optimal solutions offline
 
-**[Live Demo →](https://ronakvijayvergia.github.io/tesla-supercharger-optimizer/)**
+**[Live Dashboard →](https://ronakvijayvergia.github.io/tesla-supercharger-optimizer/)**
 
 > *This project was built with the assistance of Claude (Anthropic). The concept, problem framing, and direction are mine; the code and content were AI-generated. I do not claim intellectual ownership over the AI-generated portions.*
 
-## Features
-
-- **Accurate India map** with district-level boundaries using D3-geo + GeoJSON (759 districts, 36 states/UTs)
-- **Real-time greedy solver** — scores and ranks 35 candidate cities by demand, grid capacity, highway connectivity, and more
-- **Parameter controls**: budget, coverage range, minimum stations, demand growth
-- **Strategy toggles**: rollout phases, highway prioritization, solar integration
-- **5-tab dashboard**: Network Map, Analysis, Corridors, Projection, MILP Model
-- **Hover tooltips** explaining every KPI and parameter
-- **MILP reference formulation** — formal mathematical model with PuLP (Python) code you can copy and run offline
-
 ## How It Works
 
-### Live Dashboard (Greedy Heuristic)
-The browser-based solver uses a **greedy scoring algorithm** for instant interactivity:
-- Cities are scored by demand, grid capacity, type (metro/highway/tourism), and highway corridor proximity
-- The solver selects the highest-scoring cities within the budget constraint
-- Coverage, demand satisfaction, and highway connectivity are computed in real time
+### Live Dashboard — Greedy Heuristic (`index.html`)
 
-### MILP Reference (Exact Solver)
-The **MILP Model tab** provides the formal optimization formulation:
-- **Objective**: Minimize total cost (fixed site costs + variable charger costs)
-- **Constraints**: Budget cap, coverage range, minimum station count, capacity limits
-- **Implementation**: PuLP (Python) code ready to run with CBC, Gurobi, or CPLEX for provably optimal solutions
-- The heuristic approximates this model; the MILP finds the exact optimum
+The browser runs a **JavaScript scoring algorithm** for instant feedback as you adjust sliders:
+- Cities are scored by demand, grid capacity, type (metro/highway/tourism), and highway proximity
+- Highest-scoring cities are selected greedily within the budget constraint
+- Coverage, demand satisfaction, and highway connectivity are recomputed in real time
+
+This is a **heuristic** — it finds good solutions fast, but not necessarily the mathematical optimum.
+
+### Python Solver — Exact MILP (`solver/tesla_supercharger_milp.py`)
+
+The Python file formulates and solves the **exact Mixed-Integer Linear Program**:
+- **Objective**: Maximize total demand served
+- **Decision variables**: 35 binary build decisions + 87 binary assignment variables
+- **Constraints**: Budget cap, coverage range, minimum stations, single-assignment per demand point
+- **Solver**: PuLP with CBC (open-source, bundled) — also compatible with Gurobi/CPLEX
+- Finds the **provably optimal** solution (not an approximation)
+
+```bash
+pip install pulp
+python solver/tesla_supercharger_milp.py --budget 1500 --range 250 --min-stations 10
+```
+
+Sample output:
+```
+Status: Optimal
+Stations built:    21 / 35
+Total investment:  ₹1180 Cr
+Cities covered:    35 / 35 (100%)
+Demand served:     7,380 / 7,380 (100%)
+```
+
+## Features
+
+- **Accurate India map** with district-level boundaries (D3-geo + GeoJSON, 759 districts, 36 states/UTs)
+- **35 candidate cities** with real geographic coordinates, demand estimates, grid capacity, and construction costs
+- **7 highway corridors** (Golden Quadrilateral + major national highways)
+- **Parameter controls**: budget, coverage range, minimum stations, demand growth multiplier
+- **Strategy toggles**: rollout phases (Tier 1/2/3), highway prioritization, solar integration bonus
+- **5-tab dashboard**: Network Map, Analysis, Corridors, Projection, MILP Model
+- **Hover tooltips** explaining every KPI card and parameter
 
 ## Tech Stack
 
-Single self-contained HTML file — zero build step:
+| Component | Technology | Runs Where |
+|-----------|-----------|------------|
+| Dashboard UI | React 18, Tailwind CSS | Browser (CDN) |
+| Map rendering | D3.js (geoMercator projection) | Browser (CDN) |
+| Charts | Recharts | Browser (CDN) |
+| JSX compilation | Babel standalone | Browser (CDN) |
+| Greedy solver | Vanilla JavaScript | Browser |
+| MILP solver | PuLP + CBC (Python) | Offline / CLI |
 
-- React 18 (CDN)
-- D3.js (CDN) — geographic projection + GeoJSON rendering
-- Recharts (CDN) — data visualizations
-- Tailwind CSS (CDN)
-- Babel standalone (CDN)
+The dashboard is a **single self-contained HTML file** — zero build step, no server required.
+The Python solver is a **standalone script** — `pip install pulp` and run.
 
-## Deploy
+## Repo Structure
+
+```
+├── index.html                          # Interactive dashboard (deploy to GitHub Pages)
+├── solver/
+│   └── tesla_supercharger_milp.py      # Exact MILP solver (run offline with Python)
+└── README.md
+```
+
+## Deploy the Dashboard
 
 1. Fork this repo
 2. Go to **Settings → Pages → Source → main**
@@ -51,10 +85,11 @@ Single self-contained HTML file — zero build step:
 
 ## Limitations
 
-- **Scope**: Limited to 35 candidate cities — India's vast size may need 100+ for full coverage
+- **Scope**: 35 candidate cities — India's vast geography may need 100+ for full rural coverage
 - **Data**: Demand estimates and costs are baseline approximations, not sourced from real market data
-- **Solver**: The live dashboard uses a heuristic, not an exact MILP solver — results are good approximations but not provably optimal
-- **Dynamic factors**: Doesn't model grid reliability, monsoon impact on solar, or multi-period year-over-year expansion
+- **Heuristic vs optimal**: The live dashboard uses a greedy heuristic; the Python solver finds the exact optimum but runs offline
+- **Static model**: No stochastic elements (variable EV adoption), multi-period planning (year-over-year expansion), or grid reliability modeling
+- **No real-time data**: Doesn't integrate live traffic APIs, grid status feeds, or weather impact
 
 ## License
 
