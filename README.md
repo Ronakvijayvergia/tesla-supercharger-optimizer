@@ -1,6 +1,6 @@
 # Tesla Supercharger Network Optimizer — India
 
-Interactive dashboard for the **facility location problem** applied to Tesla's Supercharger network rollout across India.
+Interactive dashboard for the **facility location problem** applied to Tesla's Supercharger network rollout across India. ( If ever Tesla decides to roll-out) 
 
 **Two components **
 - **`index.html`** — Browser-based dashboard with a **greedy heuristic** for real-time interactivity
@@ -46,7 +46,7 @@ Demand served:     7,380 / 7,380 (100%)
 
 ## Features
 
-- **Accurate India map** with district-level boundaries (D3-geo + GeoJSON, 759 districts, 36 states/UTs)
+- **India map** with district-level boundaries (D3-geo + GeoJSON, 759 districts, 36 states/UTs)
 - **35 candidate cities** with real geographic coordinates, demand estimates, grid capacity, and construction costs
 - **7 highway corridors** (Golden Quadrilateral + major national highways)
 - **Parameter controls**: budget, coverage range, minimum stations, demand growth multiplier
