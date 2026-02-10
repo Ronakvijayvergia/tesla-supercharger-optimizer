@@ -91,6 +91,4 @@ The Python solver is a **standalone script** — `pip install pulp` and run.
 - **Static model**: No stochastic elements (variable EV adoption), multi-period planning (year-over-year expansion), or grid reliability modeling
 - **No real-time data**: Doesn't integrate live traffic APIs, grid status feeds, or weather impact
 
-## License
 
-MIT
