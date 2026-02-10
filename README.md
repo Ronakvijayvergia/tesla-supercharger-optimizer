@@ -2,7 +2,7 @@
 
 Interactive dashboard for the **facility location problem** applied to Tesla's Supercharger network rollout across India.
 
-**Two components, clearly separated:**
+**Two components **
 - **`index.html`** — Browser-based dashboard with a **greedy heuristic** for real-time interactivity
 - **`solver/tesla_supercharger_milp.py`** — Exact **MILP solver** using PuLP + CBC that finds provably optimal solutions offline
 
